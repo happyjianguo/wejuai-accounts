@@ -1,0 +1,9 @@
+spring:
+  cloud:
+    config:
+      name: accounts
+      profile: ${SPRING_PROFILES_ACTIVE:dev}
+      uri: ${CONFIG_SERVER:https://wejuai:wejuaigit2020server@config.wejuai.com}
+health:
+  config:
+    enabled: false

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>为聚爱登录内核</title>
+    <script src="https://lib.baomitu.com/vue/2.6.10/vue.min.js"></script>
+    <script src="https://lib.baomitu.com/axios/0.19.0/axios.min.js"></script>
+</head>
+<body class="wejuai">
+<div id="login" style="margin: 0;padding: 0;border:0 ">
+    <a class="active">密码登录</a>
+    <br>
+    <div style="padding-top: 8px;padding-bottom:17px;text-align: right;height: 20px">
+        <div class="msg-info" style="display: none;" ref="mgsInfo">
+            {{msg}}
+        </div>
+    </div>
+    <div class="js-sign-up-container" disabled="block">
+        <form class="new_user">
+            <div class="input-prepend restyle" style="margin-bottom: 10px;">
+                <input placeholder="邮箱" type="email" name="email" v-model="email" ref="email"
+                       v-on:click="focusInput('邮箱',$event)">
+                <i class="iconfont">&#xe69f;</i>
+            </div>
+            <div class="input-prepend">
+                <input placeholder="密码" type="text" name="password" AUTOCOMPLETE="off" v-model="password" ref="password"
+                       v-on:click="focusInput('密码',$event)" @keyup.enter="login()" @focus="focus">
+                <i class="iconfont">&#xe82b;</i>
+            </div>
+            <input type="button" v-on:click="login()" value="登录" class="sign-up-button">
+        </form>
+    </div>
+    <div id="login-other" style="text-align: right;">
+        <a class="link" @click="toResetPassword">忘记密码</a>&nbsp;&nbsp;
+        <a class="link" @click="toSignUp">免费注册</a>&nbsp;&nbsp;&nbsp;
+    </div>
+    <div id="login-link">
+        <a style="color: #757575; font-size: 5px;">其他方式登录：</a>&nbsp;&nbsp;&nbsp;
+        <a class="icon-qq" v-on:click="jumpQQLogin()" title="QQ登录"></a>&nbsp;&nbsp;&nbsp;
+        <a class="icon-weibo" v-on:click="jumpWeiboLogin" title="微博登录"></a>&nbsp;&nbsp;&nbsp;
+        <a class="icon-weixin" v-on:click="jumpWeixinLogin" title="微信登录"></a>
+    </div>
+</div>
+<script>
+    // document.domain = "wejuai.com";
+    var _win = window;
+    new Vue({
+        el: '#login',
+        data: {
+            email: '',                          //邮箱
+            password: '',                       //密码
+            backState: '',                      //跳转注册页面前的页面
+            msg: '',                            //消息
+        },
+        // 创建事件
+        created() {
+            this.fetchData();
+        },
+        methods: {
+            focus(e) {
+                e.currentTarget.type = e.currentTarget.name;
+            },
+            // 跳转重置密码
+            toResetPassword: function () {
+                _win.parent.location.href = "https://accounts.wejuai.com/resetPassword.html";
+            },
+            // 跳转注册
+            toSignUp: function () {
+                _win.parent.location.href = "https://accounts.wejuai.com/signUp.html";
+            },
+            // 验证email格式
+            checkEmail: function (email) {
+                let regEmail = /^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$/;
+                if (email === '') {
+                    this.$refs.email.style.border = '1px solid red';
+                    this.$refs.email.style.webkitTextFillColor = 'red';
+                    this.$refs.email.placeholder = '请输入邮箱';
+                    this.email = '';
+                    return false;
+                } else if (!regEmail.test(email)) {
+                    this.$refs.email.style.border = '3px solid red';
+                    this.$refs.email.style.webkitTextFillColor = 'red';
+                    this.$refs.email.placeholder = '邮箱格式不正确';
+                    this.email = '';
+                    return false;
+                }
+                return true;
+            },
+            checkPassword: function (password) {
+                if (password === '' || password == null || password === undefined) {
+                    this.$refs.password.style.border = '1px solid red';
+                    this.$refs.password.style.webkitTextFillColor = 'red';
+                    this.$refs.password.placeholder = '请输入密码';
+                    this.password = '';
+                    return false;
+                } else {
+                    return true;
+                }
+            },
+            // 登录
+            login: function () {
+                let _this = this;
+                let url = 'https://accounts.wejuai.com/accounts/login';
+                if (this.checkForm(this.email)) {
+                    axios.post(url, {
+                        email: this.email,
+                        password: this.password
+                    }).then(function (err) {
+                        console.log("登录成功");
+                        // _win.parent.location.href=_this.backState;
+                        _win.parent.loginSuccess("登录成功");
+                    }).catch(function (err) {
+                        if (err.response == null) {
+                            _win.parent.location.href = _this.backState;
+                        }
+                        if (err.response.status < 500) {
+                            _this.email = '';
+                            _this.password = '';
+                            _this.showError(err.response.data.errorDescription);
+                        } else if (err.response.status >= 500) {
+                            _this.showError("服务器出现错误请提交反馈~");
+                        }
+                    });
+                }
+            },
+            jumpQQLogin: function () {
+                _win.parent.location.href = "https://accounts.wejuai.com/accounts/login/qq?state=" + this.backState;
+            },
+            jumpWeiboLogin: function () {
+                _win.parent.location.href = "https://accounts.wejuai.com/accounts/login/weibo?state=" + this.backState;
+            },
+            jumpWeixinLogin: function () {
+                var ua = window.navigator.userAgent.toLowerCase();
+                var type = "PC";
+                if (ua.match(/MicroMessenger/i) == 'micromessenger') {
+                    type = "OFFIACCOUNT";
+                }
+                _win.parent.location.href = "https://accounts.wejuai.com/accounts/login/wx?state=" + this.backState + "&type=" + type;
+            },
+            // 验证表单
+            checkForm: function () {
+                if (this.checkEmail(this.email)) {
+                    return this.checkPassword(this.password);
+                }
+                return false;
+            },
+            // 鼠标点击输入框事件（保证style正确）
+            focusInput: function (placeHolder, e) {
+                e.currentTarget.type = e.currentTarget.name;
+                e.currentTarget.style.border = '1px solid #c8c8c8';
+                e.currentTarget.style.webkitTextFillColor = '';
+                e.currentTarget.placeholder = placeHolder;
+            },
+            // 获取url里面的state
+            fetchData: function () {
+                let urlParam = decodeURIComponent((new RegExp('[?|&]state=' + '([^&;]+?)(&|#|;|$)').exec(location.href) || [, ""])[1].replace(/\+/g, '%20'));
+                if ('' === urlParam || null === urlParam || undefined === urlParam) {
+                    this.backState = 'https://www.wejuai.com';
+                } else {
+                    this.backState = urlParam;
+                }
+            },
+            showError: function (msg) {
+                this.msg = msg;
+                let obj = this.$refs.mgsInfo;
+                this.showObj(obj, 5000, '#FF0010');
+            },
+            //显示
+            showObj: function (obj, timeout, color) {
+                if (!color) {
+                    color = '#757575';
+                }
+                obj.style.display = 'inline';
+                obj.style.color = color;
+                setTimeout(function () {
+                    obj.style.display = 'none';
+                }, timeout);
+            }
+        }
+    })
+</script>
+<!--css-->
+<style lang="scss" scoped>
+
+    .icon-qq {
+        cursor: pointer;
+        height: 32px;
+        width: 32px;
+        display: inline-block;
+        background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJbSURBVFhHrZcxiNRAFIZXBAtLQRAE6wNrG8Hm7C0ErSwUYSZZC7G30xOxFaw9dzLHxWu0EARBbGyF4wrxkMvMedaCoAhCfBNfbueSf5JMdn/42Czzv3+GyW7mZRKjqTbnE2VeJpkpITTmPGxfnij8XWuyHtLMvOfy8Uq0fYjCY0i1XeO4ONF2/kCBY5Cq+Mmx/RKvD06ikCYyM58p+Bkt9Gmi7A7yNHHZPE1YqPAoxSO2tiRUcR/XzGErVt+2i/zrObYG5Tyo1gPfDqFs5+qFLm6wtVep2r+KMuaAXcTGOWwbLNrNvyinhm3/RT+oN8hUI2bFZbYOVrJhLqGsmiPPCWTwyfPyOFujhLJ8KpPIDlbQoE9lHCGU5VM9tqUyMzR4iDJfOC9adGtfwExGarPVu0pa4E3OGyWU6dNrSLS5wlmjBDM9Og20hb85Z7RoB7dQdk3nAq7lOyc4ZyGh7JrwoDbbXL+w3MEF5yA6FrC/yvULK1XmCZyDCP4NuXZCT6y7fBktmdmp+6S8tJnvqP6GwQeRKtbFOp1syvyp0iJVluUxl3N7056iW7DbyicO+0c06EO7dK8yRogW/hFl+bB1wGE0oA9oaprvnUFZNa2mFZkctLjHbImWzIpXKNPBlrlCDQmFfGBLS+lGcTGd2Qv8tSWpqWcEmcG2rqMl+ySf27POc2vz+2navgeu063H6foXtfB3qhCS1N+uu0PMq/fp7pBBwVLhacIa2paPYVBbXosKlvhi0rPtIUll11BgHOH3iMFKMvsWh4dZystpUyLbW+k6391Y3Ov5ZPIPZIklQ/bnZUAAAAAASUVORK5CYII=");
+    }
+
+    .icon-weibo {
+        cursor: pointer;
+        height: 32px;
+        width: 32px;
+        display: inline-block;
+        background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADsUlEQVRYR81XQW7bVhB9Q356GxmImWWUE1Q9QeUTWN4FNo3KJ4h8gignqHyCKhVlZGf5BJFOUPoEVZdVCoTemhRf8T9JWbZF6gtugXLL4cybNzNvhoIdnr+DoJMJj0BpAmxApGU+JyNAYgjnjnDy+rerG1u3ss3w+/v3zcRzPwLSAdDYZl+8jwFOPNe72B8O47pvagH8FQR9EXzYIfDTWLEQg4Mw/FQFYiOA791uI0mTryuKLdOuNCMjT3mHm9h4BmBxctKC63x9QdZVOGIss0P/6ipaN3gEwGS+TP/4D4KXMWPPVe/WmVgB+Ndpr+KBjPxw/GP5egWgaLiPLy23zfckPr0Jw762NQDyUVO/v4R6kn+KyDzXBTQg+KEGzKoUBsAiOB1C5Gcb9NWdjks/DHu6lLrGppkdZ1gJhPzsh+NuCSCGyKsdAMwKBWxt+o7g3KVcuEpNkzSdVoCI/VG4L7m84tomOMGbvWTZ2//yxVC9ODvpAs6vDw3FC1AiAh0IPghxaCoi0GP97HGIY7GnPzv3R1fDdS/fgqBtnJN3EMnnm3zlpcvjRKkJhfM3o3FnEZxuZpi4lMVZMAXwUz0Dz4OXzZsq1TwIQ+0Duv73aaIX0xDClkAa/ihs18SYySIIorqOFfDiYDQe2JQoL0sw1SxQ0BDKjW7MagYYaQZY43ymMyizS5LkiCKdIrsmiCmB2HWyYbmCH5WUjByH/YzOpCpGLQDdRJpePVJ05VogTZCfiWLewa6IvM2dc+iPxueGBTOCMrWZrOoSkHd+OG483g+Pe6GseQlCd/XrMDTZLoJgoCehtnTEbV0TGvq/nZ32CPkFxK0fhi2dnZdlceI5bT0V64HWJdZS2nUTVqug56r9ZZq2C52YCdHPxy5Xvacq6iXpu5VGbGnuvGq4rBWiMqNiUt56y6yVunKskuVEB1rpgPH2UB4r+gEYISqyqJHi7Nxz9yZJmvYJdkRwLZQ4A1oi0HeiYUY3a94vib4fDTv19c97zG4ZEVPHyQauszdL7u+b4jjmOFVKRXrxmG2q1BGFPTMpNs/6MiqOkbnN2KxO8CIIhU3roCUw8s5TXlOD/38cJCWwbbJsw+xWm2KcS7vnR2ma2JVia6QNBmvUbwSwq4zuhEGv7Izt2rO8dJg3ZeUls1PcQnBuPaXaVj8m696NnII9q+nYBIu8I2RQXsCbTLb/nOa/afoe6FgD0XQDE095vRf9nD5FbO5HUAPRt8DD6U3cQhCDiBxgWm5Em1r9A1nnFncOJEafAAAAAElFTkSuQmCC");
+    }
+
+    .icon-weixin {
+        cursor: pointer;
+        height: 32px;
+        width: 32px;
+        display: inline-block;
+        background: url("data:image/png;base64,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");
+    }
+
+    #login-link {
+        padding-top: 10px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+    }
+
+    #login-other {
+        padding-top: 10px;
+    }
+
+    #login-other a {
+        color: #757575;
+        font-size: 5px;
+        cursor: pointer;
+    }
+
+    #login-other a:hover {
+        color: #62d1ff;
+    }
+
+    .wejuai {
+        width: 330px;
+        margin: 0 auto;
+        height: 340px;
+    }
+
+    body {
+        padding: 0 !important;
+    }
+
+    h4 {
+        font-size: 30px;
+    }
+
+    .msg-info {
+        right: 0;
+        color: #757575;
+    }
+
+    .active {
+        font-family: "Microsoft YaHei", "Open Sans", "Clear Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 20px;
+    }
+
+    .js-sign-up-container {
+        box-sizing: border-box;
+    }
+
+    form .input-prepend {
+        position: relative;
+        width: 100%;
+    }
+
+    form .restyle {
+        margin-bottom: 0;
+    }
+
+    form .input-prepend input {
+        width: 246px;
+        height: 50px;
+        margin-bottom: 0;
+        padding: 4px 12px 4px 70px;
+        border: 1px solid #c8c8c8;
+        border-radius: 0 0 4px 4px;
+        background-color: hsla(0, 0%, 71%, .1);
+        vertical-align: middle;
+    }
+
+    /*导入阿里的iconfont*/
+    @font-face {
+        font-family: 'iconfont';  /* project id 707515 */
+        src: url('https://at.alicdn.com/t/font_707515_g75em1ifqqp.eot');
+        src: url('https://at.alicdn.com/t/font_707515_g75em1ifqqp.eot?#iefix') format('embedded-opentype'),
+        url('https://at.alicdn.com/t/font_707515_g75em1ifqqp.woff') format('woff'),
+        url('https://at.alicdn.com/t/font_707515_g75em1ifqqp.ttf') format('truetype'),
+        url('https://at.alicdn.com/t/font_707515_g75em1ifqqp.svg#iconfont') format('svg');
+    }
+
+    .iconfont {
+        font-family: iconfont, serif !important;
+        font-size: inherit;
+        font-style: normal;
+        font-weight: 400 !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    form .input-prepend i {
+        position: absolute;
+        top: 20px;
+        left: 26px;
+        font-size: 18px;
+        color: #969696;
+    }
+
+    .sign-up-button {
+        position: relative;
+        margin-top: 20px;
+        width: 80%;
+        padding: 9px 18px;
+        font-size: 18px;
+        left: 40px;
+        border: none;
+        border-radius: 25px;
+        color: #ffffff;
+        background: #62d1ff;
+        cursor: pointer;
+        outline: none;
+        display: block;
+        clear: both;
+    }
+</style>
+</body>
+</html>
